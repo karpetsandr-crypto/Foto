@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Счётчик фото</string>
+    <!-- Сюда вставь ссылку веб-приложения Apps Script (заканчивается на /exec) -->
+    <string name="app_url">https://script.google.com/macros/s/AKfycbwwk0u8yVjx79HIghVLT-xx7uyCTa6o1I23EvP1X-7jMZNw8nourVqejOH0le_CRY4n/exec</string>
+</resources>
