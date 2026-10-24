@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Счётчик фото</title>
+<style>
+:root{--bg:#f4f5f9;--card:#fff;--tx:#14161f;--mut:#707590;--ac:#5b5bf0;--ac2:#e9e9ff;--ln:#e6e8f0;--ok:#16a36a;box-sizing:border-box}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1017;--card:#181b26;--tx:#eef0f8;--mut:#8b90aa;--ac:#8484ff;--ac2:#25274a;--ln:#262a3a;--ok:#3ccf91;color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding-bottom:84px}
+main{max-width:520px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:20px;padding:16px;margin-bottom:12px}
+.nav,.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nav b{font-size:17px}
+.ib{background:var(--card);color:var(--tx);width:42px;height:42px;border-radius:14px;font-size:20px;border:1px solid var(--ln)}
+.big{font-size:56px;font-weight:800;letter-spacing:-1.5px;line-height:1;color:var(--ac)}
+.mut{color:var(--mut);font-size:14px}
+.row{display:flex;gap:8px;margin-top:12px}
+input{font:inherit;font-size:16px;color:var(--tx);background:var(--bg);border:1px solid var(--ln);border-radius:14px;padding:12px 14px;width:100%}
+.btn{border:0;background:var(--ac);color:#fff;font-weight:700;font-size:16px;border-radius:14px;padding:0 20px;min-height:48px;white-space:nowrap}
+.btn.s{background:var(--ac2);color:var(--tx)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{background:var(--ac2);border-radius:12px;padding:8px 12px;font-size:15px;font-weight:600}
+.bars{display:flex;align-items:flex-end;gap:6px;height:90px;margin-top:10px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--mut)}
+.bars span{display:block;width:100%;background:var(--ac2);border-radius:6px 6px 3px 3px;min-height:3px}
+.bars .on span{background:var(--ac)}
+.prog{height:10px;background:var(--ac2);border-radius:6px;overflow:hidden;margin-top:8px}
+.prog span{display:block;height:100%;background:var(--ok);border-radius:6px}
+.li{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--ln);width:100%;background:none;border-left:0;border-right:0;border-top:0;color:var(--tx);font:inherit;text-align:left}
+.li:last-child{border-bottom:0}
+.li b{font-size:17px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.grid .card{margin:0;padding:14px}
+.grid b{display:block;font-size:22px}
+h3{margin:4px 0 8px;font-size:15px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--ln);padding:6px 10px 10px;gap:6px}
+.tabs button{flex:1;border:0;background:none;color:var(--mut);font-size:12px;font-weight:600;padding:6px;border-radius:12px}
+.tabs button span{display:block;font-size:20px}
+.tabs button.on{color:var(--ac);background:var(--ac2)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:96px;background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:14px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style></head>
+<body>
+<main id="app"></main>
+<div class="tabs" id="tabs"></div>
+<div class="toast" id="toast"></div>
+<script>
+var BOX=4800,KEY='photo-counter-cache',S={days:{}},view='today',cur,tdy,loading=false,upd=0,pass='';
+var MN=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'],WD=['вс','пн','вт','ср','чт','пт','сб'];
+var MF=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function parse(i){var p=i.split('-').map(Number);return new Date(p[0],p[1]-1,p[2])}
+function sum(i){return(S.days[i]||[]).reduce(function(a,b){return a+b},0)}
+function fmt(n){return Math.round(n).toLocaleString('ru-RU')}
+function box(n){return (n/BOX).toLocaleString('ru-RU',{maximumFractionDigits:2})}
+function wk(i){var d=parse(i);d.setDate(d.getDate()-(d.getDay()+6)%7);return iso(d)}
+function shift(i,n){var d=parse(i);d.setDate(d.getDate()+n);return iso(d)}
+function lbl(i){var d=parse(i);return WD[d.getDay()]+', '+d.getDate()+' '+MN[d.getMonth()]}
+function toast(t){var e=document.getElementById('toast');e.textContent=t;e.className='toast show';clearTimeout(toast.t);toast.t=setTimeout(function(){e.className='toast'},1800)}
+function weeks(){var w={};Object.keys(S.days).forEach(function(i){var k=wk(i);w[k]=w[k]||{t:0,d:0};var s=sum(i);w[k].t+=s;if(s>0)w[k].d++});return Object.keys(w).sort().reverse().map(function(k){return{k:k,t:w[k].t,d:w[k].d}})}
+var API=(window.Android&&Android.apiUrl)?Android.apiUrl():'';
+var base={days:{},updated:0},ops=[],busy=false,cbs={},cbn=0;
+function lj(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+function sj(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function recompute(){
+ S={days:{}};
+ Object.keys(base.days).forEach(function(k){S.days[k]=base.days[k].slice()});
+ ops.forEach(function(o){var a=S.days[o.day]=S.days[o.day]||[];if(o.type=='add')a.push(o.n);else a.pop()});
+ S.updated=base.updated;upd=base.updated;
+}
+function queue(o){
+ if(o.type=='rm'){
+  for(var i=ops.length-1;i>=0;i--){if(ops[i].day==o.day){if(ops[i].type=='add'){ops.splice(i,1);sj('photo-ops',ops);recompute();render();return}break}}
+  if(!(S.days[o.day]||[]).length)return;
+ }
+ o.id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+ ops.push(o);sj('photo-ops',ops);recompute();render();sync();
+}
+window.__cb=function(id,ok,txt){var f=cbs[id];delete cbs[id];if(f)f(ok,txt)};
+function http(method,url,body,done){
+ if(window.Android&&Android.request){var id=++cbn;cbs[id]=done;Android.request(id,method,url,body||'');return}
+ var o={method:method};if(method=='POST'){o.body=body;o.headers={'Content-Type':'text/plain;charset=utf-8'}}
+ fetch(url,o).then(function(r){return r.text()}).then(function(t){done(true,t)},function(){done(false,'')});
+}
+function sync(){
+ if(busy||!API)return;busy=true;loading=true;render();
+ var fin=function(m){busy=false;loading=false;render();if(m)toast(m)};
+ var getd=function(){http('GET',API+'?action=data',null,function(ok,t){
+  if(!ok)return fin(ops.length?'Нет связи, сохранено на телефоне':'');
+  try{var d=JSON.parse(t);if(d.days){base=d;sj(KEY,d);recompute()}}catch(e){return fin('Ошибка ответа')}
+  fin('')})};
+ if(!ops.length)return getd();
+ http('POST',API,JSON.stringify({pass:pass,ops:ops}),function(ok,t){
+  if(!ok)return fin('Нет связи, сохранено на телефоне');
+  var r;try{r=JSON.parse(t)}catch(e){return fin('Ошибка ответа')}
+  if(r.error){if(r.error.indexOf('Неверный код')>-1){pass='';try{localStorage.removeItem('photo-pass')}catch(x){}}return fin(r.error)}
+  var dn={};(r.done||[]).forEach(function(i){dn[i]=1});
+  ops=ops.filter(function(o){return !dn[o.id]});sj('photo-ops',ops);
+  if(r.days){base={days:r.days,updated:r.updated};sj(KEY,base)}
+  recompute();fin(r.msg?r.msg.slice(0,80):'Отправлено');
+ });
+}
+function lsg(k){try{return localStorage.getItem(k)||''}catch(e){return ''}}
+function render(){
+ var h='',t=document.getElementById('tabs');
+ t.innerHTML=[['today','📷','Сегодня'],['weeks','📊','Недели'],['total','Σ','Итого'],['hist','🗓','История']].map(function(x){return '<button data-a="tab" data-v="'+x[0]+'" class="'+(view==x[0]?'on':'')+'"><span>'+x[1]+'</span>'+x[2]+'</button>'}).join('');
+ var u=new Date(upd);
+ h+='<div class="top"><span class="mut">'+(loading?'Обновляю…':(upd?'Обновлено '+String(u.getHours()).padStart(2,'0')+':'+String(u.getMinutes()).padStart(2,'0'):'Нет данных'))+(ops.length?' · ⏳ не отправлено: '+ops.length:'')+'</span><button class="ib" data-a="sync">↻</button></div>';
+ if(view=='today'){
+  var a=S.days[cur]||[],tot=sum(cur),w=wk(cur),wt=0,i,last=[],mx=1;
+  for(i=0;i<7;i++)wt+=sum(shift(w,i));
+  for(i=6;i>=0;i--){var d=shift(cur,-i),s=sum(d);mx=Math.max(mx,s);last.push([d,s])}
+  var pct=Math.min(100,(wt%BOX)/BOX*100);
+  h+='<div class="nav"><button class="ib" data-a="day" data-v="-1">‹</button><b>'+(cur==tdy?'Сегодня, ':'')+lbl(cur)+'</b><button class="ib" data-a="day" data-v="1">›</button></div>';
+  h+='<div class="card"><div class="mut">Напечатано за день</div><div class="big">'+fmt(tot)+'</div><div class="mut" style="margin-top:6px">заказов: '+a.length+'</div><div class="chips">'+a.map(function(n){return '<span class="chip">'+n+'</span>'}).join('')+'</div></div>';
+  if(!pass)h+='<div class="card"><div class="mut" style="margin-bottom:10px">Введи код записи (один раз)</div><div class="row" style="margin:0"><input id="pw" type="password" placeholder="Код"><button class="btn" data-a="savepass">OK</button></div></div>';
+  else h+='<div class="card"><div class="row" style="margin:0"><input id="in" type="number" inputmode="numeric" placeholder="Сколько фото" min="1"><button class="btn" data-a="addin">Добавить</button></div><div class="row"><button class="btn s" style="flex:1" data-a="rm">↶ Удалить последнее</button></div></div>';
+  h+='<div class="card"><div class="mut">Неделя: '+lbl(w)+' – '+lbl(shift(w,5))+'</div><div style="font-size:26px;font-weight:800;margin-top:4px">'+fmt(wt)+' <span class="mut" style="font-weight:500">≈ '+box(wt)+' ящ.</span></div><div class="prog"><span style="width:'+pct+'%"></span></div>';
+  h+='<div class="bars">'+last.map(function(x){var d=parse(x[0]);return '<div class="'+(x[0]==cur?'on':'')+'"><span style="height:'+Math.max(3,x[1]/mx*70)+'px"></span>'+WD[d.getDay()]+'</div>'}).join('')+'</div></div>';
+ }
+ if(view=='total'){
+  var ks2=Object.keys(S.days).filter(function(k){return sum(k)>0}).sort(),A=0,O=0,B=0,BD='',M={},W=weeks(),bw=0,bk='';
+  ks2.forEach(function(k){var s=sum(k),m=k.slice(0,7);A+=s;O+=S.days[k].length;if(s>B){B=s;BD=k}M[m]=M[m]||{t:0,d:0};M[m].t+=s;M[m].d++});
+  W.forEach(function(x){if(x.t>bw){bw=x.t;bk=x.k}});
+  var nd=ks2.length;
+  h+='<div class="card"><div class="mut">Всего напечатано</div><div class="big">'+fmt(A)+'</div><div class="mut" style="margin-top:6px">≈ '+box(A)+' ящ.'+(nd?' · с '+lbl(ks2[0]):'')+'</div></div>';
+  h+='<div class="grid">'+[['Рабочих дней',nd,''],['Заказов',O,''],['Среднее за день',nd?A/nd:0,''],['Среднее за заказ',O?A/O:0,''],['Рекорд дня',B,BD?lbl(BD):''],['Лучшая неделя',bw,bk?lbl(bk)+' – '+lbl(shift(bk,5)):'']].map(function(x){return '<div class="card"><span class="mut">'+x[0]+'</span><b>'+fmt(x[1])+'</b><span class="mut">'+x[2]+'</span></div>'}).join('')+'</div>';
+  h+='<h3>По месяцам</h3><div class="card">'+Object.keys(M).sort().reverse().map(function(m){var p=m.split('-'),x=M[m];return '<div class="li"><span>'+MF[+p[1]-1]+' '+p[0]+'<br><span class="mut">дней: '+x.d+' · ср. '+fmt(x.t/x.d)+'/день · ≈ '+box(x.t)+' ящ.</span></span><b>'+fmt(x.t)+'</b></div>'}).join('')+'</div>';
+ }
+ if(view=='weeks'){
+  var ws=weeks(),mw=Math.max.apply(null,ws.map(function(x){return x.t}).concat([1]));
+  h+='<h3>По неделям</h3><div class="card">'+ws.map(function(x){return '<div class="li" style="display:block"><div style="display:flex;justify-content:space-between"><span>'+lbl(x.k)+' – '+lbl(shift(x.k,5))+'</span><b>'+fmt(x.t)+'</b></div><div class="prog"><span style="width:'+x.t/mw*100+'%;background:var(--ac)"></span></div><div class="mut" style="margin-top:4px">≈ '+box(x.t)+' ящ. · в среднем '+fmt(x.d?x.t/x.d:0)+'/день</div></div>'}).join('')+'</div>';
+ }
+ if(view=='hist'){
+  var ks=Object.keys(S.days).filter(function(k){return sum(k)>0}).sort().reverse();
+  h+='<h3>Дни</h3><div class="card">'+ks.map(function(k){return '<button class="li" data-a="open" data-v="'+k+'"><span>'+lbl(k)+'<br><span class="mut">заказов: '+S.days[k].length+'</span></span><b>'+fmt(sum(k))+'</b></button>'}).join('')+'</div>';
+ }
+ document.getElementById('app').innerHTML=h;
+}
+document.addEventListener('click',function(e){
+ var b=e.target.closest('[data-a]');if(!b)return;var a=b.dataset.a,v=b.dataset.v;
+ if(a=='tab'){view=v;render();scrollTo(0,0)}
+ else if(a=='day'){cur=shift(cur,+v);render()}
+ else if(a=='open'){cur=v;view='today';render();scrollTo(0,0)}
+ else if(a=='sync')sync();
+ else if(a=='savepass'){var p=document.getElementById('pw').value.trim();if(p){pass=p;try{localStorage.setItem('photo-pass',p)}catch(e){}render()}}
+ else if(a=='addin'){var n=+document.getElementById('in').value;if(n>0)queue({type:'add',day:cur,n:n})}
+ else if(a=='rm')queue({type:'rm',day:cur});
+});
+function chk(){var n=iso(new Date());if(n!=tdy){if(cur==tdy)cur=n;tdy=n;render()}}
+tdy=iso(new Date());cur=tdy;
+base=lj(KEY,base);ops=lj('photo-ops',[]);recompute();
+pass=lsg('photo-pass');render();sync();
+setInterval(chk,30000);setInterval(sync,60000);window.addEventListener('online',sync);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){chk();sync()}});
+</script></body></html>
